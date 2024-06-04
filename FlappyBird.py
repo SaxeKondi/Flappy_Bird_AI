@@ -10,6 +10,8 @@ from GeneticAlgorithm import *
 from DeepQLearning import DQNAgent
 pygame.font.init()
 
+#501* 30  * 303 * 2 * 600
+
 def get_movement_characteristics(max_jump_height, jump_peak_time):
     # jump_height = v*t + a*(0.5*t^2 - 0.5*t)
     # eq1: v*jump_peak_time + a*(0.5*jump_peak_time^2 - 0.5*jump_peak_time) = max_jump_height
@@ -321,7 +323,7 @@ class GA_Env():
         
         while(len(ge) > 0):
             pygame.event.pump()
-            draw_window([game.bird for game in games], games[0].pipes, games[0].ground, games[0].score, GEN, len(games)) #draw all birds
+            # draw_window([game.bird for game in games], games[0].pipes, games[0].ground, games[0].score, GEN, len(games)) #draw all birds
             # draw_window([games[0].bird], games[0].pipes, games[0].ground, games[0].score, GEN, len(games)) #draw one bird
             for game in games:
                 i = games.index(game)
@@ -347,34 +349,58 @@ def run_genetic():
     env = GA_Env()
     nn = neuralNetwork([4,5,1]) #input layer should be min 2 and max 4. output layer should be 1
     # nn = neuralNetwork([2,2,1]) #input layer should be min 2 and max 4. output layer should be 1
-    GeneticAlgorithm(env.fitnessFunction, 1700, nn, populationSize= 50, maxGenerations=5000, elitism=3)
+    maxScores = []
+    avgScores = []
+    maxFitnesses = []
+    avgFitnesses = []
+    gen = []
+    episodes = []
+    for i in range(1):
+        env = GA_Env()
+        GeneticAlgorithm(env.fitnessFunction, 1800, nn, populationSize= 50, maxGenerations=5000 / 50, elitism=3)
+        maxScores.append(env.maxScore)
+        avgScores.append(env.avgScore)
+        maxFitnesses.append(env.maxFitness)
+        avgFitnesses.append(env.avgFitness)
+        if i == 0:
+            gen = env.gen
+            episodes = env.episodes
 
-    plt.plot(env.gen, env.maxScore, label= "Max score")
-    plt.plot(env.gen, env.avgScore, label= "Average score")
+    
+    plt.plot(gen, np.max(maxScores, axis=0), label= "Max score")
+    # plt.plot(gen, np.mean(maxScores, axis=0), label= "Mean max score")
+    plt.plot(gen, np.mean(avgScores, axis=0), label= "Average score")
     plt.legend(loc="upper left")
     plt.xlabel("Generation")
     plt.ylabel("Score")
+    plt.grid()
     plt.show()
 
-    plt.plot(env.episodes, env.maxScore, label= "Max score")
-    plt.plot(env.episodes, env.avgScore, label= "Average score")
+    plt.plot(episodes, np.max(maxScores, axis=0), label= "Max score")
+    # plt.plot(episodes, np.mean(maxScores, axis=0), label= "Mean max score")
+    plt.plot(episodes, np.mean(avgScores, axis=0), label= "Average score")
     plt.legend(loc="upper left")
     plt.xlabel("Episodes")
     plt.ylabel("Score")
+    plt.grid()
     plt.show()
 
-    plt.plot(env.gen, env.maxFitness, label= "Max fitness")
-    plt.plot(env.gen, env.avgFitness, label= "Average fitness")
+    plt.plot(gen, np.max(maxFitnesses, axis=0), label= "Max fitness")
+    # plt.plot(gen, np.mean(maxFitnesses, axis=0), label= "Mean max fitness")
+    plt.plot(gen, np.mean(avgFitnesses, axis=0), label= "Average fitness")
     plt.legend(loc="upper left")
     plt.xlabel("Generation")
     plt.ylabel("Fitness")
+    plt.grid()
     plt.show()
 
-    plt.plot(env.episodes, env.maxFitness, label= "Max fitness")
-    plt.plot(env.episodes, env.avgFitness, label= "Average fitness")
+    plt.plot(episodes, np.max(maxFitnesses, axis=0), label= "Max fitness")
+    # plt.plot(episodes, np.mean(maxFitnesses, axis=0), label= "Mean max fitness")
+    plt.plot(episodes, np.mean(avgFitnesses, axis=0), label= "Average fitness")
     plt.legend(loc="upper left")
     plt.xlabel("Episodes")
     plt.ylabel("Fitness")
+    plt.grid()
     plt.show()
 
 
@@ -395,14 +421,89 @@ class DQN_Env():
         if(done):
             self.episodes += 1
             print(self.episodes)
-        return state[:self.state_num], reward, done
+        return state[:self.state_num], reward, done, score
     
 
 def run_deep_q():
     state_num = 4
     env = DQN_Env(state_num)
-    agent = DQNAgent(env, state_size=state_num, gamma = 0.99, lr=5e-4, memory_size=10000)
-    agent.train(episodes=10000, epsilon_start=1.0, epsilon_end=0.01, epsilon_decay=0.995, target_update=10)
+    agent = DQNAgent(env, state_size=state_num, hidden_size=24, gamma = 0.99, lr=5e-4, memory_size=10000, batch_size=100)
+    agent.train(episodes=5000, epsilon_start=1.0, epsilon_end=0.01, epsilon_decay=0.995, target_update=10)
+
+    plt.plot(agent.episodesLog, np.max(agent.scoreLog, axis=1), label= "Max score")
+    plt.plot(agent.episodesLog, np.mean(agent.scoreLog, axis=1), label= "Average score")
+    plt.legend(loc="upper left")
+    plt.xlabel("Episodes")
+    plt.ylabel("Score")
+    plt.grid()
+    plt.show()
+
+    plt.plot(agent.episodesLog, np.max(agent.rewardsLog, axis=1), label= "Max rewards")
+    plt.plot(agent.episodesLog, np.mean(agent.rewardsLog, axis=1), label= "Average rewards")
+    plt.legend(loc="upper left")
+    plt.xlabel("Episodes")
+    plt.ylabel("rewards")
+    plt.grid()
+    plt.show()
+
+def run_model_test():
+    ga_env_1 = GA_Env()
+    nn1 = neuralNetwork([2,2,1])
+    genome1 = [Genome(np.array([-6.7682629, 26.59227252, 24.97461092, 19.36058211, -7.99780762, 7.24521996, 23.99178313, 9.34592194, -25.07604013]))]
+
+    dq_env_1 = DQN_Env(2)
+    agent1 = DQNAgent(dq_env_1, state_size=2, hidden_size=2, gamma = 0.99, lr=5e-4, memory_size=10000)
+    agent1.load_model()
+    dq1_rewards = []
+    dq1_scores = []
+
+    ga_env_2 = GA_Env()
+    nn2 = neuralNetwork([4,5,1])
+    genome2 = [Genome(np.array([-13.01945376, 18.00212269, -21.63364316, -24.06907181, 0.70385995, 11.75660713, -25.70095168, 7.50384898, 7.21138902, -7.25801307, -11.96214417, -6.960516, -26.46382285, -24.04255709, 11.74918692, -22.26180718, 2.43125987, -27.00744258, -10.68860083, -27.53002917, -30.0, -26.47327079, 10.5736381, 28.66344109, 5.26833176, -24.79593037, -9.3698382, -1.35425123, 26.84251403, 19.95761209, -29.17829287]))]
+
+    dq_env_2 = DQN_Env(4)
+    agent2 = DQNAgent(dq_env_2, state_size=4, hidden_size=5, gamma = 0.99, lr=5e-4, memory_size=10000)
+    agent2.load_model()
+    dq2_rewards = []
+    dq2_scores = []
+
+    dq_env_3 = DQN_Env(4)
+    agent3 = DQNAgent(dq_env_3, state_size=4, hidden_size=24, hidden_layers=2 , gamma = 0.99, lr=5e-4, memory_size=10000)
+    agent3.load_model()
+    dq3_rewards = []
+    dq3_scores = []
+
+    episodes = range(1,101)
+    for _ in episodes:
+        ga_env_1.fitnessFunction(genome1, nn1)
+
+        rewards, scores = agent1.evaluate(1)
+        dq1_rewards.append(rewards)
+        dq1_scores.append(scores)
+
+        ga_env_2.fitnessFunction(genome2, nn2)
+
+        rewards, scores = agent2.evaluate(1)
+        dq2_rewards.append(rewards)
+        dq2_scores.append(scores)
+
+        rewards, scores = agent3.evaluate(1)
+        dq3_rewards.append(rewards)
+        dq3_scores.append(scores)
+
+    print(f"GA_2: {np.mean(ga_env_1.maxScore)}, GA_4: {np.mean(ga_env_2.maxScore)}, DQN_2: {np.mean(dq1_scores)}, DQN_4: {np.mean(dq2_scores)}, DQN_4_24: {np.mean(dq3_scores)}")
+    plt.plot(episodes, ga_env_1.maxScore, label= "GA_2")
+    plt.plot(episodes, ga_env_2.maxScore, label= "GA_4")
+    plt.plot(episodes, np.mean(dq1_scores, axis=1), label= "DQN_2")
+    plt.plot(episodes, np.mean(dq2_scores, axis=1), label= "DQN_4")
+    plt.plot(episodes, np.mean(dq3_scores, axis=1), label= "DQN_4_24")
+    plt.legend(loc="lower right")
+    plt.xlabel("Episodes")
+    plt.ylabel("Score")
+    plt.grid()
+    plt.show()
+    
+        
 
     
 def run_manual():
@@ -432,8 +533,9 @@ def run_manual():
             done = False
 
 if __name__ == "__main__":
-    run_genetic()
+    # run_genetic()
     # run_deep_q()
+    run_model_test()
     # run_manual()
 
 
